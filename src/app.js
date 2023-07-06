@@ -3,7 +3,8 @@ import cors from "cors"
 import dotenv from "dotenv"
 import { MongoClient } from "mongodb"
 import Joi from "joi"
-import bcrypt from "bcrypt"
+import bcrypt, { compareSync } from "bcrypt"
+import { v4 as uuid } from "uuid"
 
 // Criação do app
 const app = express()
@@ -55,6 +56,35 @@ app.post("/cadastro", async (req, res) => {
 
         await db.collection("users").insertOne({ name, email, password: passwordHash })
         res.sendStatus(201)
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+})
+
+app.post("/", async (req, res) => {
+    const { email, password } = req.body
+
+    const validation = schemaLogin.validate(req.body, { abortEarly: false })
+
+    if (validation.error) {
+        return res.status(422).send(validation.error.details.map(detail => detail.message))
+    }
+
+    try {
+        const user = await db.collection("users").findOne({ email })
+        if (!user) {
+            return res.status(404).send("Email não cadastrado")
+        }
+
+        const correctPassword = bcrypt.compareSync(password, user.password)
+        if (!correctPassword) {
+            return res.status(401).send("Senha incorreta")
+        }
+
+        const token = uuid()
+        await db.collection("session").insertOne({ token, userId: user._id })
+
+        res.send(token)
     } catch (err) {
         res.status(500).send(err.message)
     }
