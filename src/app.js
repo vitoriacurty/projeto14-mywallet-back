@@ -5,7 +5,7 @@ import router from "./routes/index.routes.js"
 // Criação do app
 const app = express()
 
-// Confirgurações
+// Configurações
 app.use(cors())
 app.use(express.json())
 app.use(router)
